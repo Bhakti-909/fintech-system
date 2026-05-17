@@ -242,6 +242,4 @@ Any service instance can validate a JWT using the shared secret — no shared se
 
 
 
-**Bhakti Sainathi Kale**  
-B.Tech Information Technology — MGM University, Chhatrapati Sambhajinagar  
-[GitHub](https://github.com/Bhakti-909) · [Email](mailto:bskpatil909@gmail.com) · [LinkedIn](https://linkedin.com)
+
