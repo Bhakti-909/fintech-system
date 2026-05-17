@@ -1,0 +1,118 @@
+version: '3.8'
+
+# INTERVIEW: "Docker Compose orchestrates all 5 microservices + PostgreSQL
+# as containers. Each service is isolated but they communicate via the
+# 'fintech-network' bridge network using service names as hostnames.
+# I used separate DB schemas per service — database-per-service pattern."
+
+services:
+
+  # ─── PostgreSQL Database ───────────────────────────────────────────
+  postgres:
+    image: postgres:15
+    container_name: fintech-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: fintech_main
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - fintech-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Auth Service (port 8081) ──────────────────────────────────────
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fintech_auth
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres123
+      JWT_SECRET: fintech_super_secret_key_32chars_min
+      JWT_EXPIRATION: 86400000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fintech-network
+
+  # ─── Account Service (port 8082) ──────────────────────────────────
+  account-service:
+    build: ./account-service
+    container_name: account-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fintech_accounts
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres123
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fintech-network
+
+  # ─── Transaction Service (port 8083) ──────────────────────────────
+  transaction-service:
+    build: ./transaction-service
+    container_name: transaction-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fintech_transactions
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres123
+      ACCOUNT_SERVICE_URL: http://account-service:8082/api/accounts
+    depends_on:
+      - account-service
+    networks:
+      - fintech-network
+
+  # ─── Loan Service (port 8084) ─────────────────────────────────────
+  loan-service:
+    build: ./loan-service
+    container_name: loan-service
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fintech_loans
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres123
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fintech-network
+
+  # ─── Notification Service (port 8085) ─────────────────────────────
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fintech_notifications
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres123
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fintech-network
+
+volumes:
+  postgres_data:
+
+networks:
+  fintech-network:
+    driver: bridge

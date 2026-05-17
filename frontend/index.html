@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FinTech Dashboard</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
+  /* Sidebar */
+  .sidebar{position:fixed;top:0;left:0;width:220px;height:100vh;background:#1a1a2e;color:#fff;display:flex;flex-direction:column;padding:0;z-index:100}
+  .sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid #2d2d4e}
+  .sidebar-logo h1{font-size:18px;font-weight:600;color:#7c6af7}
+  .sidebar-logo p{font-size:11px;color:#888;margin-top:2px}
+  .sidebar-nav{padding:16px 0;flex:1}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:10px 20px;cursor:pointer;font-size:13px;color:#aaa;border-left:3px solid transparent;transition:all .2s}
+  .nav-item:hover,.nav-item.active{background:#2d2d4e;color:#fff;border-left-color:#7c6af7}
+  .nav-item svg{width:18px;height:18px;flex-shrink:0}
+  .sidebar-user{padding:16px 20px;border-top:1px solid #2d2d4e;font-size:12px;color:#888}
+  .user-email{color:#fff;font-size:13px;margin-bottom:2px}
+  .logout-btn{margin-top:8px;padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;width:100%}
+
+  /* Main */
+  .main{margin-left:220px;padding:24px;min-height:100vh}
+  .page{display:none}
+  .page.active{display:block}
+  .page-title{font-size:22px;font-weight:600;margin-bottom:6px}
+  .page-sub{font-size:13px;color:#666;margin-bottom:24px}
+
+  /* Auth pages */
+  .auth-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0f2f5}
+  .auth-card{background:#fff;border-radius:16px;padding:36px 32px;width:380px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+  .auth-card h2{font-size:22px;font-weight:600;margin-bottom:4px}
+  .auth-card p{font-size:13px;color:#888;margin-bottom:24px}
+  .form-group{margin-bottom:16px}
+  .form-group label{display:block;font-size:12px;font-weight:500;color:#444;margin-bottom:6px}
+  .form-group input,.form-group select{width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none;transition:border .2s}
+  .form-group input:focus,.form-group select:focus{border-color:#7c6af7}
+  .btn-primary{width:100%;padding:11px;background:#7c6af7;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:background .2s}
+  .btn-primary:hover{background:#6a58e6}
+  .btn-primary:disabled{background:#bbb;cursor:not-allowed}
+  .switch-link{text-align:center;margin-top:16px;font-size:13px;color:#888}
+  .switch-link a{color:#7c6af7;cursor:pointer;text-decoration:none;font-weight:500}
+  .msg{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
+  .msg.error{background:#fef0f0;color:#e74c3c;display:block}
+  .msg.success{background:#f0fef4;color:#27ae60;display:block}
+
+  /* Stats */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+  .stat-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+  .stat-label{font-size:12px;color:#888;margin-bottom:6px}
+  .stat-value{font-size:26px;font-weight:600;color:#1a1a2e}
+  .stat-sub{font-size:11px;color:#aaa;margin-top:4px}
+  .stat-card.blue{border-top:3px solid #3b82f6}
+  .stat-card.purple{border-top:3px solid #7c6af7}
+  .stat-card.green{border-top:3px solid #10b981}
+  .stat-card.amber{border-top:3px solid #f59e0b}
+
+  /* Cards */
+  .card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:16px}
+  .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .card-title{font-size:15px;font-weight:600}
+  .btn-sm{padding:7px 16px;background:#7c6af7;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500}
+  .btn-sm:hover{background:#6a58e6}
+  .btn-outline{padding:7px 16px;background:#fff;color:#7c6af7;border:1px solid #7c6af7;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500}
+  .btn-danger{padding:7px 16px;background:#e74c3c;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer}
+
+  /* Table */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:10px 12px;background:#f8f9fa;color:#666;font-weight:500;border-bottom:1px solid #eee}
+  td{padding:10px 12px;border-bottom:1px solid #f0f0f0;color:#333}
+  tr:hover td{background:#fafafa}
+
+  /* Badges */
+  .badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px}
+  .badge-green{background:#d1fae5;color:#065f46}
+  .badge-amber{background:#fef3c7;color:#92400e}
+  .badge-red{background:#fee2e2;color:#991b1b}
+  .badge-blue{background:#dbeafe;color:#1e40af}
+  .badge-gray{background:#f3f4f6;color:#374151}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:#fff;border-radius:16px;padding:28px;width:420px;max-width:90vw}
+  .modal h3{font-size:17px;font-weight:600;margin-bottom:4px}
+  .modal p{font-size:13px;color:#888;margin-bottom:20px}
+  .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+  /* Grid */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr}.sidebar{display:none}.main{margin-left:0}}
+
+  /* Empty state */
+  .empty{text-align:center;padding:40px;color:#aaa;font-size:14px}
+
+  /* Notification toast */
+  .toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;z-index:999;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+  .toast.show{display:block;animation:fadeIn .3s}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- LOGIN PAGE -->
+<div id="page-login" class="auth-wrap">
+  <div class="auth-card">
+    <h2>Welcome back</h2>
+    <p>Sign in to your FinTech account</p>
+    <div class="msg" id="login-msg"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="bhakti@fintech.com"/></div>
+    <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="••••••••"/></div>
+    <button class="btn-primary" onclick="doLogin()">Sign in</button>
+    <div class="switch-link">Don't have an account? <a onclick="showPage('page-register')">Register</a></div>
+  </div>
+</div>
+
+<!-- REGISTER PAGE -->
+<div id="page-register" class="auth-wrap" style="display:none">
+  <div class="auth-card">
+    <h2>Create account</h2>
+    <p>Register for FinTech Banking</p>
+    <div class="msg" id="reg-msg"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="reg-email" placeholder="bhakti@fintech.com"/></div>
+    <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="Min 6 characters"/></div>
+    <div class="form-group"><label>Role</label>
+      <select id="reg-role"><option value="CUSTOMER">Customer</option><option value="ADMIN">Admin</option></select>
+    </div>
+    <button class="btn-primary" onclick="doRegister()">Create account</button>
+    <div class="switch-link">Already have an account? <a onclick="showPage('page-login')">Sign in</a></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-logo"><h1>FinTech</h1><p>Banking Platform</p></div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="showDashTab('overview')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Overview
+      </div>
+      <div class="nav-item" onclick="showDashTab('accounts')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        Accounts
+      </div>
+      <div class="nav-item" onclick="showDashTab('transfer')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        Transfer
+      </div>
+      <div class="nav-item" onclick="showDashTab('transactions')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Transactions
+      </div>
+      <div class="nav-item" onclick="showDashTab('loans')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Loans
+      </div>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-email" id="sidebar-email">user@fintech.com</div>
+      <div id="sidebar-role" style="font-size:11px;color:#7c6af7;margin-bottom:4px">CUSTOMER</div>
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- OVERVIEW TAB -->
+    <div id="tab-overview" class="page active">
+      <div class="page-title">Overview</div>
+      <div class="page-sub" id="welcome-msg">Good day! Here's your financial summary.</div>
+      <div class="stats-grid">
+        <div class="stat-card blue"><div class="stat-label">Total Accounts</div><div class="stat-value" id="stat-accounts">0</div><div class="stat-sub">Active accounts</div></div>
+        <div class="stat-card purple"><div class="stat-label">Total Balance</div><div class="stat-value" id="stat-balance">₹0</div><div class="stat-sub">Across all accounts</div></div>
+        <div class="stat-card green"><div class="stat-label">Transactions</div><div class="stat-value" id="stat-txns">0</div><div class="stat-sub">All time</div></div>
+        <div class="stat-card amber"><div class="stat-label">Active Loans</div><div class="stat-value" id="stat-loans">0</div><div class="stat-sub">Ongoing EMIs</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Recent Transactions</div></div>
+        <div id="recent-txns"><div class="empty">No transactions yet. Create an account and make a transfer.</div></div>
+      </div>
+    </div>
+
+    <!-- ACCOUNTS TAB -->
+    <div id="tab-accounts" class="page">
+      <div class="page-title">Accounts</div>
+      <div class="page-sub">Manage your bank accounts</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">My Accounts</div>
+          <button class="btn-sm" onclick="openModal('modal-create-account')">+ New Account</button>
+        </div>
+        <div id="accounts-list"><div class="empty">No accounts found. Create one to get started.</div></div>
+      </div>
+    </div>
+
+    <!-- TRANSFER TAB -->
+    <div id="tab-transfer" class="page">
+      <div class="page-title">Transfer Money</div>
+      <div class="page-sub">Send money between accounts instantly</div>
+      <div class="card" style="max-width:500px">
+        <div class="msg" id="transfer-msg"></div>
+        <div class="form-group"><label>From Account</label>
+          <select id="from-account"><option value="">Select account...</option></select>
+        </div>
+        <div class="form-group"><label>To Account Number</label><input type="text" id="to-account" placeholder="ACC-123456"/></div>
+        <div class="form-group"><label>Amount (₹)</label><input type="number" id="transfer-amount" placeholder="1000" min="1"/></div>
+        <div class="form-group"><label>Description</label><input type="text" id="transfer-desc" placeholder="Rent, EMI, etc."/></div>
+        <button class="btn-primary" onclick="doTransfer()">Transfer Now</button>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS TAB -->
+    <div id="tab-transactions" class="page">
+      <div class="page-title">Transaction History</div>
+      <div class="page-sub">All your transactions in one place</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">All Transactions</div>
+          <select id="txn-filter-account" onchange="loadTransactions()" style="font-size:12px;padding:6px 10px;border:1px solid #ddd;border-radius:6px;outline:none">
+            <option value="">All accounts</option>
+          </select>
+        </div>
+        <div id="txn-table"><div class="empty">No transactions yet.</div></div>
+      </div>
+    </div>
+
+    <!-- LOANS TAB -->
+    <div id="tab-loans" class="page">
+      <div class="page-title">Loans</div>
+      <div class="page-sub">Apply for loans and track EMI repayments</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">My Loans</div>
+          <button class="btn-sm" onclick="openModal('modal-apply-loan')">Apply for Loan</button>
+        </div>
+        <div id="loans-list"><div class="empty">No loans found.</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: Create Account -->
+<div class="modal-overlay" id="modal-create-account">
+  <div class="modal">
+    <h3>Create New Account</h3>
+    <p>Open a new bank account instantly</p>
+    <div class="msg" id="create-acc-msg"></div>
+    <div class="form-group"><label>Account Type</label>
+      <select id="new-acc-type">
+        <option value="SAVINGS">Savings</option>
+        <option value="CURRENT">Current</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeModal('modal-create-account')">Cancel</button>
+      <button class="btn-sm" onclick="doCreateAccount()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Apply for Loan -->
+<div class="modal-overlay" id="modal-apply-loan">
+  <div class="modal">
+    <h3>Apply for Loan</h3>
+    <p>Fill in loan details below</p>
+    <div class="msg" id="loan-msg"></div>
+    <div class="form-group"><label>Account Number</label>
+      <select id="loan-account"><option value="">Select account...</option></select>
+    </div>
+    <div class="form-group"><label>Loan Amount (₹)</label><input type="number" id="loan-amount" placeholder="100000" min="1000"/></div>
+    <div class="form-group"><label>Annual Interest Rate (%)</label><input type="number" id="loan-rate" placeholder="12" min="1" max="30"/></div>
+    <div class="form-group"><label>Tenure (months)</label><input type="number" id="loan-tenure" placeholder="24" min="1" max="360"/></div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeModal('modal-apply-loan')">Cancel</button>
+      <button class="btn-sm" onclick="doApplyLoan()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ─────────────────────────────────────────────
+const API = {
+  auth:        'http://localhost:8081/api/auth',
+  accounts:    'http://localhost:8082/api/accounts',
+  transactions:'http://localhost:8083/api/transactions',
+  loans:       'http://localhost:8084/api/loans',
+  notify:      'http://localhost:8085/api/notifications'
+};
+
+let token = localStorage.getItem('fintech_token') || '';
+let userEmail = localStorage.getItem('fintech_email') || '';
+let userAccounts = [];
+
+// ── INIT ────────────────────────────────────────────────
+window.onload = () => {
+  if (token) {
+    enterDashboard();
+  } else {
+    showPage('page-login');
+  }
+};
+
+// ── HELPERS ─────────────────────────────────────────────
+function showPage(id) {
+  ['page-login','page-register','page-dashboard'].forEach(p => {
+    const el = document.getElementById(p);
+    if (el) el.style.display = 'none';
+  });
+  const target = document.getElementById(id);
+  if (target) target.style.display = id === 'page-dashboard' ? 'block' : 'flex';
+}
+
+function showDashTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (tab === 'accounts') loadAccounts();
+  if (tab === 'transactions') loadTransactions();
+  if (tab === 'loans') loadLoans();
+  if (tab === 'transfer') populateTransferDropdown();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); populateLoanDropdown(); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function toast(msg, dur=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function showMsg(id, msg, type='error') {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = 'msg ' + type;
+}
+
+async function apiFetch(url, method='GET', body=null, useToken=true) {
+  const headers = {'Content-Type':'application/json'};
+  if (useToken && token) headers['Authorization'] = 'Bearer ' + token;
+  const opts = {method, headers};
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const res = await fetch(url, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || data.message || 'Request failed');
+    return data;
+  } catch(e) {
+    throw e;
+  }
+}
+
+function fmt(amount) {
+  return '₹' + Number(amount).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function statusBadge(status) {
+  const map = {COMPLETED:'badge-green',ACTIVE:'badge-green',APPROVED:'badge-green',FAILED:'badge-red',REVERSED:'badge-red',DEFAULTED:'badge-red',PENDING:'badge-amber',CLOSED:'badge-gray',SUSPENDED:'badge-amber'};
+  return `<span class="badge ${map[status]||'badge-gray'}">${status}</span>`;
+}
+
+// ── AUTH ─────────────────────────────────────────────────
+async function doRegister() {
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const role = document.getElementById('reg-role').value;
+  if (!email || !password) { showMsg('reg-msg','Please fill all fields'); return; }
+  try {
+    const data = await apiFetch(API.auth+'/register','POST',{email,password,role},false);
+    token = data.token; userEmail = data.email;
+    localStorage.setItem('fintech_token', token);
+    localStorage.setItem('fintech_email', userEmail);
+    localStorage.setItem('fintech_role', data.role);
+    enterDashboard();
+  } catch(e) { showMsg('reg-msg', e.message); }
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) { showMsg('login-msg','Please enter email and password'); return; }
+  try {
+    const data = await apiFetch(API.auth+'/login','POST',{email,password},false);
+    token = data.token; userEmail = data.email;
+    localStorage.setItem('fintech_token', token);
+    localStorage.setItem('fintech_email', userEmail);
+    localStorage.setItem('fintech_role', data.role);
+    enterDashboard();
+  } catch(e) { showMsg('login-msg', e.message); }
+}
+
+function doLogout() {
+  token=''; userEmail='';
+  localStorage.removeItem('fintech_token');
+  localStorage.removeItem('fintech_email');
+  localStorage.removeItem('fintech_role');
+  showPage('page-login');
+}
+
+function enterDashboard() {
+  showPage('page-dashboard');
+  document.getElementById('sidebar-email').textContent = userEmail;
+  const role = localStorage.getItem('fintech_role') || 'CUSTOMER';
+  document.getElementById('sidebar-role').textContent = role;
+  document.getElementById('welcome-msg').textContent = 'Good day, ' + userEmail + '! Here\'s your financial summary.';
+  loadOverview();
+}
+
+// ── OVERVIEW ─────────────────────────────────────────────
+async function loadOverview() {
+  try {
+    const accounts = await apiFetch(API.accounts+'/user/'+encodeURIComponent(userEmail));
+    userAccounts = accounts || [];
+    document.getElementById('stat-accounts').textContent = userAccounts.length;
+    const total = userAccounts.reduce((s,a) => s + parseFloat(a.balance||0), 0);
+    document.getElementById('stat-balance').textContent = fmt(total);
+
+    // transactions from first account
+    let allTxns = [];
+    if (userAccounts.length > 0) {
+      try {
+        allTxns = await apiFetch(API.transactions+'/history/'+userAccounts[0].accountNumber);
+      } catch(e) {}
+    }
+    document.getElementById('stat-txns').textContent = allTxns.length;
+
+    // recent txns table
+    if (allTxns.length > 0) {
+      const rows = allTxns.slice(0,5).map(t => `
+        <tr>
+          <td>${t.transactionRef}</td>
+          <td>${t.fromAccount}</td>
+          <td>${t.toAccount}</td>
+          <td>${fmt(t.amount)}</td>
+          <td>${statusBadge(t.status)}</td>
+        </tr>`).join('');
+      document.getElementById('recent-txns').innerHTML = `
+        <table><thead><tr><th>Ref</th><th>From</th><th>To</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody></table>`;
+    }
+  } catch(e) {
+    console.log('Overview error:', e.message);
+  }
+}
+
+// ── ACCOUNTS ─────────────────────────────────────────────
+async function loadAccounts() {
+  try {
+    const accounts = await apiFetch(API.accounts+'/user/'+encodeURIComponent(userEmail));
+    userAccounts = accounts || [];
+    if (!userAccounts.length) {
+      document.getElementById('accounts-list').innerHTML = '<div class="empty">No accounts yet. Click "+ New Account" to create one.</div>';
+      return;
+    }
+    const html = userAccounts.map(a => `
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:16px;font-weight:600;color:#7c6af7">${a.accountNumber}</div>
+            <div style="font-size:12px;color:#888;margin-top:2px">${a.accountType} Account · ${statusBadge(a.status)}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:600">${fmt(a.balance)}</div>
+            <div style="font-size:11px;color:#aaa">Available Balance</div>
+          </div>
+        </div>
+      </div>`).join('');
+    document.getElementById('accounts-list').innerHTML = html;
+    populateTransferDropdown();
+  } catch(e) { document.getElementById('accounts-list').innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
+
+async function doCreateAccount() {
+  const type = document.getElementById('new-acc-type').value;
+  try {
+    await apiFetch(API.accounts,'POST',{ownerEmail:userEmail, accountType:type});
+    closeModal('modal-create-account');
+    toast('Account created successfully!');
+    loadAccounts(); loadOverview();
+  } catch(e) { showMsg('create-acc-msg', e.message); }
+}
+
+// ── TRANSFER ─────────────────────────────────────────────
+function populateTransferDropdown() {
+  const sel = document.getElementById('from-account');
+  sel.innerHTML = '<option value="">Select account...</option>';
+  userAccounts.forEach(a => {
+    sel.innerHTML += `<option value="${a.accountNumber}">${a.accountNumber} (${fmt(a.balance)})</option>`;
+  });
+  const loanSel = document.getElementById('txn-filter-account');
+  if(loanSel) {
+    loanSel.innerHTML = '<option value="">All accounts</option>';
+    userAccounts.forEach(a => {
+      loanSel.innerHTML += `<option value="${a.accountNumber}">${a.accountNumber}</option>`;
+    });
+  }
+}
+
+async function doTransfer() {
+  const fromAccount = document.getElementById('from-account').value;
+  const toAccount = document.getElementById('to-account').value.trim();
+  const amount = document.getElementById('transfer-amount').value;
+  const description = document.getElementById('transfer-desc').value.trim();
+  if (!fromAccount || !toAccount || !amount) { showMsg('transfer-msg','Please fill all required fields'); return; }
+  try {
+    const data = await apiFetch(API.transactions+'/transfer','POST',{
+      fromAccount, toAccount, amount:parseFloat(amount), description, initiatedBy:userEmail
+    });
+    showMsg('transfer-msg','Transfer successful! Ref: '+data.transactionRef,'success');
+    toast('₹'+amount+' transferred successfully!');
+    document.getElementById('transfer-amount').value='';
+    document.getElementById('to-account').value='';
+    loadOverview();
+  } catch(e) { showMsg('transfer-msg', e.message); }
+}
+
+// ── TRANSACTIONS ─────────────────────────────────────────
+async function loadTransactions() {
+  const accFilter = document.getElementById('txn-filter-account')?.value;
+  const accNum = accFilter || (userAccounts[0]?.accountNumber);
+  if (!accNum) { document.getElementById('txn-table').innerHTML='<div class="empty">No accounts found.</div>'; return; }
+  try {
+    const txns = await apiFetch(API.transactions+'/history/'+accNum);
+    if (!txns || !txns.length) { document.getElementById('txn-table').innerHTML='<div class="empty">No transactions yet.</div>'; return; }
+    const rows = txns.map(t => `
+      <tr>
+        <td style="font-family:monospace;font-size:12px">${t.transactionRef}</td>
+        <td>${t.fromAccount||'-'}</td>
+        <td>${t.toAccount||'-'}</td>
+        <td style="font-weight:500">${fmt(t.amount)}</td>
+        <td><span class="badge badge-blue">${t.type}</span></td>
+        <td>${statusBadge(t.status)}</td>
+        <td>${t.fraudFlag?'<span class="badge badge-red">⚠ Flagged</span>':'<span class="badge badge-green">Clear</span>'}</td>
+        <td style="color:#aaa;font-size:11px">${new Date(t.createdAt).toLocaleDateString('en-IN')}</td>
+      </tr>`).join('');
+    document.getElementById('txn-table').innerHTML = `
+      <table><thead><tr><th>Ref</th><th>From</th><th>To</th><th>Amount</th><th>Type</th><th>Status</th><th>Fraud</th><th>Date</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  } catch(e) { document.getElementById('txn-table').innerHTML=`<div class="empty">Error: ${e.message}</div>`; }
+}
+
+// ── LOANS ─────────────────────────────────────────────────
+function populateLoanDropdown() {
+  const sel = document.getElementById('loan-account');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Select account...</option>';
+  userAccounts.forEach(a => {
+    sel.innerHTML += `<option value="${a.accountNumber}">${a.accountNumber}</option>`;
+  });
+}
+
+async function loadLoans() {
+  document.getElementById('loans-list').innerHTML='<div class="empty">Loan history requires the loan service running on port 8084.</div>';
+}
+
+async function doApplyLoan() {
+  const accountNumber = document.getElementById('loan-account').value;
+  const principal = document.getElementById('loan-amount').value;
+  const annualRate = document.getElementById('loan-rate').value;
+  const tenureMonths = document.getElementById('loan-tenure').value;
+  if (!accountNumber || !principal || !annualRate || !tenureMonths) { showMsg('loan-msg','Please fill all fields'); return; }
+  try {
+    const data = await apiFetch(API.loans+'/apply','POST',{
+      email:userEmail, accountNumber, principal, annualRate, tenureMonths
+    });
+    closeModal('modal-apply-loan');
+    toast('Loan application submitted! Ref: '+data.loanRef);
+    document.getElementById('stat-loans').textContent = parseInt(document.getElementById('stat-loans').textContent||0)+1;
+  } catch(e) { showMsg('loan-msg', e.message); }
+}
+</script>
+</body>
+</html>

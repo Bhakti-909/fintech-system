@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fintech Service Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --border: #1e1e2e;
+  --text: #e8e8f0;
+  --muted: #555570;
+  --green: #00ff88;
+  --green-dim: rgba(0,255,136,.12);
+  --red: #ff4466;
+  --red-dim: rgba(255,68,102,.12);
+  --amber: #ffaa00;
+  --amber-dim: rgba(255,170,0,.1);
+  --blue: #4488ff;
+  --blue-dim: rgba(68,136,255,.1);
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+
+/* grid bg */
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.4;pointer-events:none;z-index:0}
+
+.wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:40px 24px}
+
+/* header */
+.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:48px}
+.header-left h1{font-size:28px;font-weight:800;letter-spacing:-1px;color:var(--text)}
+.header-left h1 span{color:var(--green)}
+.header-left p{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px}
+.check-all-btn{font-family:var(--mono);font-size:12px;font-weight:500;padding:10px 20px;background:transparent;border:1px solid var(--green);color:var(--green);border-radius:6px;cursor:pointer;transition:all .2s;letter-spacing:.05em}
+.check-all-btn:hover{background:var(--green-dim)}
+.check-all-btn:active{transform:scale(.97)}
+.check-all-btn.running{opacity:.5;cursor:not-allowed}
+
+/* summary bar */
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:32px}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px}
+.sum-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.sum-val{font-size:28px;font-weight:800;letter-spacing:-1px}
+.sum-val.green{color:var(--green)}
+.sum-val.red{color:var(--red)}
+.sum-val.amber{color:var(--amber)}
+
+/* service cards */
+.services-grid{display:flex;flex-direction:column;gap:10px}
+.svc-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0;overflow:hidden;transition:border-color .3s}
+.svc-card.up{border-color:rgba(0,255,136,.3)}
+.svc-card.down{border-color:rgba(255,68,102,.3)}
+.svc-card.checking{border-color:rgba(255,170,0,.3)}
+
+.svc-main{display:flex;align-items:center;gap:16px;padding:16px 20px;cursor:pointer}
+.svc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;transition:all .3s}
+.svc-dot.up{background:var(--green);box-shadow:0 0 8px var(--green)}
+.svc-dot.down{background:var(--red);box-shadow:0 0 8px var(--red)}
+.svc-dot.checking{background:var(--amber);animation:pulse 1s infinite}
+.svc-dot.idle{background:var(--muted)}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.svc-info{flex:1}
+.svc-name{font-weight:700;font-size:14px;letter-spacing:.01em}
+.svc-meta{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
+.svc-port{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto;margin-right:16px}
+.svc-status-text{font-family:var(--mono);font-size:11px;font-weight:500;padding:4px 10px;border-radius:4px;flex-shrink:0}
+.svc-status-text.up{background:var(--green-dim);color:var(--green)}
+.svc-status-text.down{background:var(--red-dim);color:var(--red)}
+.svc-status-text.checking{background:var(--amber-dim);color:var(--amber)}
+.svc-status-text.idle{background:rgba(85,85,112,.15);color:var(--muted)}
+.svc-expand{font-size:14px;color:var(--muted);margin-left:8px;transition:transform .2s}
+.svc-card.open .svc-expand{transform:rotate(180deg)}
+
+/* detail panel */
+.svc-detail{display:none;padding:0 20px 16px;border-top:1px solid var(--border)}
+.svc-card.open .svc-detail{display:block}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px}
+.detail-item{background:var(--bg);border-radius:6px;padding:10px 12px}
+.detail-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.detail-val{font-family:var(--mono);font-size:13px;color:var(--text);word-break:break-all}
+.detail-val.green{color:var(--green)}
+.detail-val.red{color:var(--red)}
+.detail-val.amber{color:var(--amber)}
+
+/* endpoints */
+.endpoints{margin-top:14px}
+.ep-title{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.ep-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:12px}
+.ep-row:last-child{border-bottom:none}
+.ep-method{padding:2px 7px;border-radius:3px;font-size:10px;font-weight:600;flex-shrink:0}
+.ep-method.POST{background:rgba(68,136,255,.15);color:var(--blue)}
+.ep-method.GET{background:rgba(0,255,136,.1);color:var(--green)}
+.ep-method.PUT{background:rgba(255,170,0,.1);color:var(--amber)}
+.ep-path{color:var(--text);flex:1}
+.ep-desc{color:var(--muted);font-size:11px}
+
+/* test buttons */
+.test-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.test-btn{font-family:var(--mono);font-size:11px;padding:6px 14px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s}
+.test-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim)}
+
+/* response box */
+.response-box{margin-top:12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;display:none}
+.response-box.show{display:block}
+.response-label{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em}
+.response-body{font-family:var(--mono);font-size:12px;color:var(--green);white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;line-height:1.6}
+.response-body.error{color:var(--red)}
+
+/* log */
+.log-section{margin-top:32px}
+.log-title{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.log-clear{font-size:10px;cursor:pointer;color:var(--muted);background:none;border:none;font-family:var(--mono)}
+.log-clear:hover{color:var(--text)}
+.log-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;height:160px;overflow-y:auto;font-family:var(--mono);font-size:11px;line-height:1.7}
+.log-entry{display:flex;gap:10px}
+.log-time{color:var(--muted);flex-shrink:0}
+.log-msg.ok{color:var(--green)}
+.log-msg.err{color:var(--red)}
+.log-msg.info{color:var(--amber)}
+
+/* footer */
+.footer{margin-top:32px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="header-left">
+      <h1>Fintech <span>Monitor</span></h1>
+      <p>// health check dashboard · 5 microservices</p>
+    </div>
+    <button class="check-all-btn" id="check-all-btn" onclick="checkAll()">▶ CHECK ALL</button>
+  </div>
+
+  <div class="summary">
+    <div class="sum-card"><div class="sum-label">Online</div><div class="sum-val green" id="sum-up">—</div></div>
+    <div class="sum-card"><div class="sum-label">Offline</div><div class="sum-val red" id="sum-down">—</div></div>
+    <div class="sum-card"><div class="sum-label">Last checked</div><div class="sum-val amber" id="sum-time" style="font-size:16px;padding-top:6px">—</div></div>
+  </div>
+
+  <div class="services-grid" id="services-grid"></div>
+
+  <div class="log-section">
+    <div class="log-title">
+      <span>// activity log</span>
+      <button class="log-clear" onclick="clearLog()">clear</button>
+    </div>
+    <div class="log-box" id="log-box"></div>
+  </div>
+
+  <div class="footer">fintech-system · bhakti kale · autorabit interview 2026</div>
+</div>
+
+<script>
+const SERVICES = [
+  {
+    id: 'auth',
+    name: 'Auth Service',
+    desc: 'JWT authentication & user management',
+    port: 8081,
+    healthUrl: 'http://localhost:8081/api/auth/login',
+    healthMethod: 'POST',
+    healthBody: {email:'test@test.com', password:'wrong'},
+    expectedStatus: [200, 400, 401],
+    endpoints: [
+      {method:'POST', path:'/api/auth/register', desc:'Register new user'},
+      {method:'POST', path:'/api/auth/login',    desc:'Login & get JWT token'},
+    ],
+    tests: [
+      {label:'Test Login', method:'POST', url:'http://localhost:8081/api/auth/login', body:{email:'bhakti@fintech.com',password:'Test@123'}},
+    ]
+  },
+  {
+    id: 'account',
+    name: 'Account Service',
+    desc: 'Bank accounts, balances & credit/debit',
+    port: 8082,
+    healthUrl: 'http://localhost:8082/api/accounts/user/health@check.com',
+    healthMethod: 'GET',
+    expectedStatus: [200, 401, 403, 404],
+    endpoints: [
+      {method:'POST', path:'/api/accounts',              desc:'Create new account'},
+      {method:'GET',  path:'/api/accounts/{accNum}',     desc:'Get account by number'},
+      {method:'GET',  path:'/api/accounts/user/{email}', desc:'Get accounts by email'},
+      {method:'POST', path:'/api/accounts/{accNum}/credit', desc:'Credit balance'},
+      {method:'POST', path:'/api/accounts/{accNum}/debit',  desc:'Debit balance'},
+    ],
+    tests: [
+      {label:'List Accounts', method:'GET', url:'http://localhost:8082/api/accounts/user/bhakti@fintech.com'},
+    ]
+  },
+  {
+    id: 'transaction',
+    name: 'Transaction Service',
+    desc: 'Double-entry ledger, transfers & fraud detection',
+    port: 8083,
+    healthUrl: 'http://localhost:8083/api/transactions/history/ACC-000000',
+    healthMethod: 'GET',
+    expectedStatus: [200, 400, 401, 404],
+    endpoints: [
+      {method:'POST', path:'/api/transactions/transfer',       desc:'Transfer between accounts'},
+      {method:'GET',  path:'/api/transactions/history/{acc}',  desc:'Transaction history'},
+      {method:'GET',  path:'/api/transactions/{ref}',          desc:'Get by reference'},
+    ],
+    tests: [
+      {label:'Get History', method:'GET', url:'http://localhost:8083/api/transactions/history/ACC-000000'},
+    ]
+  },
+  {
+    id: 'loan',
+    name: 'Loan Service',
+    desc: 'Loan applications, EMI calculation & repayments',
+    port: 8084,
+    healthUrl: 'http://localhost:8084/api/loans/apply',
+    healthMethod: 'POST',
+    healthBody: {},
+    expectedStatus: [200, 400, 401, 404, 405, 500],
+    endpoints: [
+      {method:'POST', path:'/api/loans/apply',           desc:'Apply for loan'},
+      {method:'PUT',  path:'/api/loans/{ref}/approve',   desc:'Approve loan (admin)'},
+      {method:'PUT',  path:'/api/loans/{ref}/repay',     desc:'Pay EMI instalment'},
+    ],
+    tests: [
+      {label:'Ping Loan Service', method:'POST', url:'http://localhost:8084/api/loans/apply', body:{}},
+    ]
+  },
+  {
+    id: 'notification',
+    name: 'Notification Service',
+    desc: 'Transfer alerts, login notifications & fraud alerts',
+    port: 8085,
+    healthUrl: 'http://localhost:8085/api/notifications/login',
+    healthMethod: 'POST',
+    healthBody: {email:'health@check.com', ip:'127.0.0.1'},
+    expectedStatus: [200, 400, 401],
+    endpoints: [
+      {method:'POST', path:'/api/notifications/transfer', desc:'Send transfer alert'},
+      {method:'POST', path:'/api/notifications/login',    desc:'Send login alert'},
+      {method:'POST', path:'/api/notifications/fraud',    desc:'Send fraud alert'},
+    ],
+    tests: [
+      {label:'Test Notify', method:'POST', url:'http://localhost:8085/api/notifications/login', body:{email:'bhakti@fintech.com', ip:'127.0.0.1'}},
+    ]
+  }
+];
+
+// State
+const state = {};
+SERVICES.forEach(s => state[s.id] = {status:'idle', latency:null, lastCode:null, lastChecked:null});
+
+// Build UI
+function buildCards() {
+  const grid = document.getElementById('services-grid');
+  grid.innerHTML = SERVICES.map(svc => `
+    <div class="svc-card" id="card-${svc.id}">
+      <div class="svc-main" onclick="toggleDetail('${svc.id}')">
+        <div class="svc-dot idle" id="dot-${svc.id}"></div>
+        <div class="svc-info">
+          <div class="svc-name">${svc.name}</div>
+          <div class="svc-meta">${svc.desc}</div>
+        </div>
+        <div class="svc-port">:${svc.port}</div>
+        <div class="svc-status-text idle" id="status-${svc.id}">IDLE</div>
+        <div class="svc-expand">▼</div>
+      </div>
+      <div class="svc-detail">
+        <div class="detail-grid">
+          <div class="detail-item"><div class="detail-label">Status</div><div class="detail-val" id="d-status-${svc.id}">—</div></div>
+          <div class="detail-item"><div class="detail-label">Latency</div><div class="detail-val" id="d-latency-${svc.id}">—</div></div>
+          <div class="detail-item"><div class="detail-label">HTTP Code</div><div class="detail-val" id="d-code-${svc.id}">—</div></div>
+          <div class="detail-item"><div class="detail-label">Base URL</div><div class="detail-val" style="font-size:11px">localhost:${svc.port}</div></div>
+        </div>
+        <div class="endpoints">
+          <div class="ep-title">endpoints</div>
+          ${svc.endpoints.map(ep=>`
+            <div class="ep-row">
+              <span class="ep-method ${ep.method}">${ep.method}</span>
+              <span class="ep-path">${ep.path}</span>
+              <span class="ep-desc">${ep.desc}</span>
+            </div>`).join('')}
+        </div>
+        <div class="test-row">
+          <button class="test-btn" onclick="checkSingle('${svc.id}')">↻ Re-check</button>
+          ${svc.tests.map((t,i)=>`<button class="test-btn" onclick="runTest('${svc.id}',${i})">${t.label}</button>`).join('')}
+        </div>
+        <div class="response-box" id="resp-${svc.id}">
+          <div class="response-label">response</div>
+          <div class="response-body" id="resp-body-${svc.id}"></div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleDetail(id) {
+  document.getElementById('card-'+id).classList.toggle('open');
+}
+
+// Health check
+async function checkSingle(id) {
+  const svc = SERVICES.find(s=>s.id===id);
+  setChecking(id);
+  const start = Date.now();
+  try {
+    const opts = {
+      method: svc.healthMethod,
+      headers: {'Content-Type':'application/json'},
+      signal: AbortSignal.timeout(5000)
+    };
+    if (svc.healthBody) opts.body = JSON.stringify(svc.healthBody);
+    const res = await fetch(svc.healthUrl, opts);
+    const latency = Date.now() - start;
+    const isUp = svc.expectedStatus.includes(res.status);
+    setResult(id, isUp ? 'up' : 'down', latency, res.status);
+    log(isUp ? 'ok' : 'err', `${svc.name} → ${isUp?'UP':'DOWN'} (HTTP ${res.status}, ${latency}ms)`);
+  } catch(e) {
+    const latency = Date.now() - start;
+    setResult(id, 'down', latency, 'ERR');
+    const msg = e.name === 'TimeoutError' ? 'timeout after 5s' : 'connection refused';
+    log('err', `${svc.name} → DOWN (${msg})`);
+  }
+  updateSummary();
+}
+
+async function checkAll() {
+  const btn = document.getElementById('check-all-btn');
+  btn.classList.add('running');
+  btn.textContent = '⏳ CHECKING...';
+  log('info', '--- checking all services ---');
+  for (const svc of SERVICES) {
+    await checkSingle(svc.id);
+    await new Promise(r => setTimeout(r, 200));
+  }
+  btn.classList.remove('running');
+  btn.textContent = '▶ CHECK ALL';
+  document.getElementById('sum-time').textContent = new Date().toLocaleTimeString();
+}
+
+async function runTest(svcId, testIdx) {
+  const svc = SERVICES.find(s=>s.id===svcId);
+  const test = svc.tests[testIdx];
+  const respBox = document.getElementById('resp-'+svcId);
+  const respBody = document.getElementById('resp-body-'+svcId);
+  respBox.classList.add('show');
+  respBody.className = 'response-body';
+  respBody.textContent = '// loading...';
+  try {
+    const opts = {method:test.method, headers:{'Content-Type':'application/json'}, signal:AbortSignal.timeout(5000)};
+    if (test.body) opts.body = JSON.stringify(test.body);
+    const res = await fetch(test.url, opts);
+    const data = await res.json().catch(()=>({raw:true}));
+    respBody.textContent = JSON.stringify(data, null, 2);
+    respBody.className = res.ok ? 'response-body' : 'response-body error';
+    log(res.ok?'ok':'err', `${test.label} → HTTP ${res.status}`);
+  } catch(e) {
+    respBody.className = 'response-body error';
+    respBody.textContent = '// Error: ' + (e.name==='TimeoutError'?'timeout after 5s':'cannot connect — is the service running?');
+    log('err', `${test.label} → failed (${e.message})`);
+  }
+}
+
+// UI helpers
+function setChecking(id) {
+  const card = document.getElementById('card-'+id);
+  const dot  = document.getElementById('dot-'+id);
+  const stxt = document.getElementById('status-'+id);
+  card.className = 'svc-card checking' + (card.classList.contains('open')?' open':'');
+  dot.className  = 'svc-dot checking';
+  stxt.className = 'svc-status-text checking';
+  stxt.textContent = 'CHECKING';
+  document.getElementById('d-status-'+id).textContent = 'Checking...';
+}
+
+function setResult(id, status, latency, code) {
+  const card = document.getElementById('card-'+id);
+  const dot  = document.getElementById('dot-'+id);
+  const stxt = document.getElementById('status-'+id);
+  const isOpen = card.classList.contains('open');
+  card.className = `svc-card ${status}${isOpen?' open':''}`;
+  dot.className  = `svc-dot ${status}`;
+  stxt.className = `svc-status-text ${status}`;
+  stxt.textContent = status === 'up' ? 'ONLINE' : 'OFFLINE';
+  const cl = status==='up'?'green':'red';
+  document.getElementById('d-status-'+id).textContent  = status==='up'?'Running':'Not reachable';
+  document.getElementById('d-status-'+id).className    = `detail-val ${cl}`;
+  document.getElementById('d-latency-'+id).textContent = latency + 'ms';
+  document.getElementById('d-latency-'+id).className   = `detail-val ${latency<300?'green':latency<800?'amber':'red'}`;
+  document.getElementById('d-code-'+id).textContent    = code;
+  document.getElementById('d-code-'+id).className      = `detail-val ${status==='up'?'green':'red'}`;
+  state[id] = {status, latency, lastCode:code};
+}
+
+function updateSummary() {
+  const up   = Object.values(state).filter(s=>s.status==='up').length;
+  const down = Object.values(state).filter(s=>s.status==='down').length;
+  document.getElementById('sum-up').textContent   = up;
+  document.getElementById('sum-down').textContent = down;
+}
+
+// Log
+function log(type, msg) {
+  const box = document.getElementById('log-box');
+  const time = new Date().toLocaleTimeString();
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-time">${time}</span><span class="log-msg ${type}">${msg}</span>`;
+  box.appendChild(entry);
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log-box').innerHTML = '';
+}
+
+buildCards();
+log('info', 'monitor ready — click CHECK ALL to ping all services');
+</script>
+</body>
+</html>
