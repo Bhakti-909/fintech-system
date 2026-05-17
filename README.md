@@ -1,6 +1,201 @@
 # Fintech System — Banking & Financial Management Platform
 
-> Java · Spring Boot · PostgreSQL · Docker · Microservices · Spring Security · JWT
+> A production-grade microservices backend for core banking operations, built with Java, Spring Boot, PostgreSQL, and Docker.
+
+![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square&logo=openjdk)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2-green?style=flat-square&logo=springboot)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?style=flat-square&logo=postgresql)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)
+![JWT](https://img.shields.io/badge/Auth-JWT-black?style=flat-square&logo=jsonwebtokens)
+
+---
+
+## Overview
+
+Fintech System is a **microservices-based banking backend** consisting of 5 independent services that handle the complete lifecycle of banking operations — from user authentication and account management to fund transfers, loan processing, and real-time notifications.
+
+Key engineering highlights:
+- **Double-entry ledger accounting** ensuring zero money loss during transfers
+- **Rule-based fraud detection** engine with velocity checks and anomaly flags
+- **JWT + RBAC** security across all services with stateless authentication
+- **Optimistic locking** (`@Version`) preventing concurrent balance corruption
+- **BigDecimal** precision for all financial calculations — no floating point errors
+- **Database-per-service** pattern for true microservice independence
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Frontend Dashboard                   │
+│              (HTML + Vanilla JS — port: file://)         │
+└──────────────────────────┬──────────────────────────────┘
+                           │ HTTP REST
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+   ┌────▼─────┐     ┌──────▼──────┐    ┌──────▼──────┐
+   │  Auth    │     │   Account   │    │ Transaction  │
+   │ Service  │     │   Service   │    │   Service    │
+   │ :8081    │     │   :8082     │    │   :8083      │
+   └────┬─────┘     └──────┬──────┘    └──────┬──────┘
+        │                  │                  │
+   ┌────▼──────────────────▼──────────────────▼──────┐
+   │                  PostgreSQL                      │
+   │  fintech_auth | fintech_accounts | fintech_txns  │
+   └──────────────────────────────────────────────────┘
+
+   ┌─────────────┐     ┌──────────────────┐
+   │    Loan     │     │  Notification    │
+   │   Service   │     │    Service       │
+   │   :8084     │     │    :8085         │
+   └─────────────┘     └──────────────────┘
+```
+
+---
+
+## Services
+
+| Service | Port | Responsibility |
+|---------|------|----------------|
+| **auth-service** | 8081 | User registration, login, JWT token generation |
+| **account-service** | 8082 | Account creation, balance management, credit/debit |
+| **transaction-service** | 8083 | Fund transfers, double-entry ledger, fraud detection |
+| **loan-service** | 8084 | Loan applications, EMI calculation, repayment tracking |
+| **notification-service** | 8085 | Transfer alerts, login notifications, fraud alerts |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Language | Java 17 |
+| Framework | Spring Boot 3.2 |
+| Security | Spring Security + JWT (jjwt 0.11.5) |
+| Persistence | Spring Data JPA + Hibernate ORM |
+| Database | PostgreSQL 15 |
+| Containerization | Docker + Docker Compose |
+| Build Tool | Maven |
+| Utilities | Lombok |
+
+---
+
+## Key Features
+
+###  Authentication & Security
+- BCrypt password hashing with cost factor 10
+- Stateless JWT authentication — no server-side sessions
+- Role-based access control (CUSTOMER / ADMIN)
+- `JwtFilter` intercepts every request, validates token, populates `SecurityContext`
+
+###  Account Management
+- Unique account number generation (ACC-XXXXXX format)
+- `BigDecimal` balances with 4 decimal precision — no floating point errors
+- `@Version` optimistic locking prevents concurrent balance corruption
+- Account types: SAVINGS, CURRENT, LOAN
+
+###  Transaction Engine
+- **Double-entry ledger**: debit sender = credit receiver (atomic via `@Transactional`)
+- Immutable transaction records — status updates only, never deletes
+- Unique transaction reference (TXN-YYYYMMDD-XXXXXX)
+- Full audit trail with `initiatedBy`, timestamp, and status tracking
+
+###  Fraud Detection
+Rule-based engine evaluating 3 signals:
+1. **High value** — transactions above ₹50,000
+2. **Velocity check** — more than 10 transactions per hour from same account
+3. **Unusual hours** — transactions between 1 AM and 4 AM
+
+###  Loan Processing
+- EMI formula: `P × r × (1+r)^n / ((1+r)^n - 1)`
+- `MathContext.DECIMAL128` for high-precision financial math
+- Loan lifecycle: PENDING → APPROVED → ACTIVE → CLOSED
+
+---
+
+## API Endpoints
+
+### Auth Service
+```
+POST /api/auth/register    — Register new user
+POST /api/auth/login       — Login and receive JWT token
+```
+
+### Account Service
+```
+POST /api/accounts                      — Create new account
+GET  /api/accounts/{accountNumber}      — Get account details
+GET  /api/accounts/user/{email}         — Get all accounts for a user
+POST /api/accounts/{accNum}/credit      — Credit balance
+POST /api/accounts/{accNum}/debit       — Debit balance
+```
+
+### Transaction Service
+```
+POST /api/transactions/transfer             — Transfer between accounts
+GET  /api/transactions/history/{accNum}     — Transaction history
+GET  /api/transactions/{ref}                — Get by reference
+```
+
+### Loan Service
+```
+POST /api/loans/apply           — Apply for loan
+PUT  /api/loans/{ref}/approve   — Approve loan (admin)
+PUT  /api/loans/{ref}/repay     — Pay EMI instalment
+```
+
+### Notification Service
+```
+POST /api/notifications/transfer   — Send transfer alert
+POST /api/notifications/login      — Send login alert
+POST /api/notifications/fraud      — Send fraud alert
+```
+
+---
+
+## Quick Start
+
+### Option 1 — Docker (One command)
+```bash
+git clone https://github.com/Bhakti-909/fintech-system.git
+cd fintech-system
+docker-compose up --build
+```
+Then open `frontend/index.html` in your browser.
+
+### Option 2 — Run Locally in IntelliJ
+1. Install Java 17 and PostgreSQL
+2. Create 5 databases: `fintech_auth`, `fintech_accounts`, `fintech_transactions`, `fintech_loans`, `fintech_notifications`
+3. Update `spring.datasource.password` in each service's `application.properties`
+4. Open each service in IntelliJ → run `XxxServiceApplication.java`
+5. Start order: auth → account → transaction → loan → notification
+
+---
+
+## Sample Requests
+
+**Register**
+```bash
+curl -X POST http://localhost:8081/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"bhakti@fintech.com","password":"Test@123","role":"CUSTOMER"}'
+```
+
+**Login**
+```bash
+curl -X POST http://localhost:8081/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"bhakti@fintech.com","password":"Test@123"}'
+```
+
+**Transfer Money**
+```bash
+curl -X POST http://localhost:8083/api/transactions/transfer \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"fromAccount":"ACC-111111","toAccount":"ACC-222222","amount":5000,"description":"Rent","initiatedBy":"bhakti@fintech.com"}'
+```
 
 ---
 
@@ -8,264 +203,45 @@
 
 ```
 fintech-system/
-├── auth-service/          → Port 8081 — Register, Login, JWT
-├── account-service/       → Port 8082 — Create accounts, balances
-├── transaction-service/   → Port 8083 — Transfers, fraud detection
-├── loan-service/          → Port 8084 — Loans, EMI calculation
-├── notification-service/  → Port 8085 — Alerts and notifications
-├── frontend/              → index.html — Dashboard UI
-├── docker-compose.yml     → Runs everything with one command
-└── init-db.sql            → Creates all 5 PostgreSQL databases
+├── auth-service/
+│   └── src/main/java/com/fintech/auth/
+│       ├── controller/       AuthController, GlobalExceptionHandler
+│       ├── service/          AuthService
+│       ├── security/         JwtUtil, JwtFilter, SecurityConfig
+│       ├── entity/           User
+│       ├── repository/       UserRepository
+│       └── dto/              LoginRequest, RegisterRequest, AuthResponse
+├── account-service/
+├── transaction-service/
+├── loan-service/
+├── notification-service/
+├── frontend/
+│   ├── index.html            Banking dashboard UI
+│   └── service-monitor.html  Health check monitor
+├── docker-compose.yml
+└── init-db.sql
 ```
 
 ---
 
-## Option 1 — Run with Docker (Easiest, one command)
+## Design Decisions
 
-### Prerequisites
-- Install Docker Desktop: https://www.docker.com/products/docker-desktop
-- Make sure Docker Desktop is running (whale icon in taskbar)
+**Why microservices over a monolith?**
+Each service scales and deploys independently. The transaction service can handle high load without redeploying auth or notifications.
 
-### Steps
+**Why database-per-service?**
+No service reads another service's database directly. All cross-service communication goes through REST APIs — true loose coupling, a core microservices principle.
 
-```bash
-# 1. Open terminal in the fintech-system folder
-cd fintech-system
+**Why stateless JWT over sessions?**
+Any service instance can validate a JWT using the shared secret — no shared session store needed. Essential for horizontal scaling in a distributed system.
 
-# 2. Run everything
-docker-compose up --build
-
-# 3. Wait ~2 minutes for all services to start
-# You will see logs from all 5 services
-
-# 4. Open frontend
-# Open frontend/index.html in your browser (double-click the file)
-```
-
-### Stop everything
-```bash
-docker-compose down
-```
+**Why BigDecimal for money?**
+`double` cannot represent many decimal values exactly — `0.1 + 0.2 = 0.30000000000000004` in Java. Financial calculations require exact decimal arithmetic. Even fractions of a rupee matter.
 
 ---
 
-## Option 2 — Run in IntelliJ IDEA (Step by step)
 
-### Step 1 — Install Prerequisites
 
-1. **Java 17** — Download from https://adoptium.net (select Java 17 LTS)
-   - After install, verify: open terminal → type `java -version` → should show 17
-
-2. **PostgreSQL** — Download from https://www.postgresql.org/download/
-   - During install: set password as `postgres123`, port `5432`
-   - After install, open **pgAdmin** (comes with PostgreSQL)
-
-3. **IntelliJ IDEA** — Community edition is free: https://www.jetbrains.com/idea/download
-
----
-
-### Step 2 — Create Databases in pgAdmin
-
-Open pgAdmin → right-click "Databases" → "Create" → "Database"
-
-Create these 5 databases one by one:
-```
-fintech_auth
-fintech_accounts
-fintech_transactions
-fintech_loans
-fintech_notifications
-```
-
-OR run this SQL in pgAdmin Query Tool:
-```sql
-CREATE DATABASE fintech_auth;
-CREATE DATABASE fintech_accounts;
-CREATE DATABASE fintech_transactions;
-CREATE DATABASE fintech_loans;
-CREATE DATABASE fintech_notifications;
-```
-
----
-
-### Step 3 — Open Project in IntelliJ
-
-1. Open IntelliJ IDEA
-2. Click **"Open"**
-3. Navigate to `fintech-system/auth-service` folder → click **OK**
-4. IntelliJ will detect it as a Maven project → click **"Load Maven Project"** when prompted
-5. Wait for IntelliJ to download all dependencies (watch bottom progress bar)
-6. **Repeat for each service** — open each one as a separate IntelliJ project OR use "File → Open" and open them all
-
-**TIP:** Use IntelliJ Ultimate (free for students) — it lets you open all modules in one window.
-Apply here: https://www.jetbrains.com/community/education/
-
----
-
-### Step 4 — Configure application.properties
-
-For each service, open `src/main/resources/application.properties` and update the password:
-
-```properties
-spring.datasource.password=postgres123
-```
-
-(Replace `your_password` with whatever you set during PostgreSQL install)
-
----
-
-### Step 5 — Run Services in IntelliJ
-
-**For each service:**
-
-1. Open the service folder in IntelliJ
-2. Find the main class:
-   - auth-service → `AuthServiceApplication.java`
-   - account-service → `AccountServiceApplication.java`
-   - transaction-service → `TransactionServiceApplication.java`
-   - loan-service → `LoanServiceApplication.java`
-   - notification-service → `NotificationServiceApplication.java`
-3. Right-click the file → **"Run 'XxxServiceApplication'"**
-4. Watch the Console tab — wait for: `Started XxxServiceApplication in X.XXX seconds`
-
-**Run order (important):**
-```
-1. auth-service        (8081) ← start first
-2. account-service     (8082)
-3. transaction-service (8083)
-4. loan-service        (8084)
-5. notification-service(8085) ← start last
-```
-
----
-
-### Step 6 — Open the Frontend Dashboard
-
-1. Navigate to `fintech-system/frontend/`
-2. Double-click `index.html`
-3. It opens in your browser automatically
-
-OR right-click `index.html` in IntelliJ → "Open In" → "Browser" → choose Chrome
-
----
-
-### Step 7 — Test the Application
-
-#### Register a user
-```
-1. On the dashboard → click "Register"
-2. Enter email: bhakti@fintech.com
-3. Enter password: Test@123
-4. Select role: CUSTOMER
-5. Click "Create account"
-```
-
-#### Create a bank account
-```
-1. Go to "Accounts" tab
-2. Click "+ New Account"
-3. Select type: SAVINGS
-4. Click "Create Account"
-5. Note the account number (e.g. ACC-123456)
-```
-
-#### Transfer money (you need 2 accounts)
-```
-1. Create a second account with a different email
-2. Go to "Transfer" tab
-3. Select From Account
-4. Enter the second account number in "To Account"
-5. Enter amount and click "Transfer Now"
-```
-
----
-
-## API Testing with Postman / curl
-
-### Register
-```bash
-curl -X POST http://localhost:8081/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"bhakti@fintech.com","password":"Test@123","role":"CUSTOMER"}'
-```
-
-### Login (get JWT token)
-```bash
-curl -X POST http://localhost:8081/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"bhakti@fintech.com","password":"Test@123"}'
-```
-
-### Create Account (use token from login)
-```bash
-curl -X POST http://localhost:8082/api/accounts \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-  -H "Content-Type: application/json" \
-  -d '{"ownerEmail":"bhakti@fintech.com","accountType":"SAVINGS"}'
-```
-
-### Transfer Money
-```bash
-curl -X POST http://localhost:8083/api/transactions/transfer \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-  -H "Content-Type: application/json" \
-  -d '{"fromAccount":"ACC-111111","toAccount":"ACC-222222","amount":5000,"description":"Test transfer","initiatedBy":"bhakti@fintech.com"}'
-```
-
-### Apply for Loan
-```bash
-curl -X POST http://localhost:8084/api/loans/apply \
-  -H "Content-Type: application/json" \
-  -d '{"email":"bhakti@fintech.com","accountNumber":"ACC-111111","principal":"100000","annualRate":"12","tenureMonths":"24"}'
-```
-
----
-
-## Common Errors & Fixes
-
-| Error | Fix |
-|-------|-----|
-| `Connection refused` on port 5432 | PostgreSQL is not running. Open pgAdmin or start PostgreSQL service |
-| `Unknown database fintech_auth` | Run the CREATE DATABASE commands in Step 2 |
-| `Port 8081 already in use` | Another service is using that port. Change `server.port` in application.properties |
-| `Could not autowire` bean error | Maven dependencies not downloaded. Right-click pom.xml → "Maven" → "Reload project" |
-| Frontend shows "Failed to fetch" | Backend services are not running. Start all 5 services first |
-| Lombok not working | IntelliJ: Settings → Plugins → search "Lombok" → Install → Restart IntelliJ |
-
----
-
-## How to Push to GitHub
-
-```bash
-# 1. Open terminal in fintech-system folder
-cd fintech-system
-
-# 2. Initialize git
-git init
-
-# 3. Add all files
-git add .
-
-# 4. First commit
-git commit -m "Initial commit - Fintech microservices banking system"
-
-# 5. Create repo on GitHub (github.com → New repository → name: fintech-system)
-
-# 6. Connect and push
-git remote add origin https://github.com/YOUR_USERNAME/fintech-system.git
-git branch -M main
-git push -u origin main
-```
-
----
-
-## Service Ports Summary
-
-| Service | Port | Database |
-|---------|------|----------|
-| auth-service | 8081 | fintech_auth |
-| account-service | 8082 | fintech_accounts |
-| transaction-service | 8083 | fintech_transactions |
-| loan-service | 8084 | fintech_loans |
-| notification-service | 8085 | fintech_notifications |
-| Frontend Dashboard | file:// | — |
+**Bhakti Sainathi Kale**  
+B.Tech Information Technology — MGM University, Chhatrapati Sambhajinagar  
+[GitHub](https://github.com/Bhakti-909) · [Email](mailto:bskpatil909@gmail.com) · [LinkedIn](https://linkedin.com)
